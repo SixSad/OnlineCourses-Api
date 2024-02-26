@@ -1,0 +1,33 @@
+services:
+
+  traefik:
+    image: traefik:v3.0
+    command:
+      - --log.level=DEBUG
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.http.address=:80
+      - --ping=true
+      - --api
+    ports:
+      - published: 80
+        target: 80
+        mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      traefik: { }
+    deploy: &labels
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=traefik
+        - traefik.constraint-label=traefik
+        - traefik.http.routers.api.service=api@internal
+        - traefik.http.services.dummy-svc.loadbalancer.server.port=9000
+        # HTTP
+        - traefik.http.routers.api.rule=Host(`traefik.${BASE_DOMAIN?}`)
+    <<: *labels
+
+networks:
+  traefik:
+    name: traefik

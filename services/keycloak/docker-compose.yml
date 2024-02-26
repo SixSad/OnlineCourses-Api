@@ -1,0 +1,46 @@
+volumes:
+  keycloak-database-data: { }
+
+services:
+
+  keycloak:
+    image: bitnami/keycloak:23
+    depends_on:
+      traefik:
+        condition: service_started
+      keycloak-database:
+        condition: service_healthy
+    environment:
+      - KEYCLOAK_CREATE_ADMIN_USER=true
+      - KEYCLOAK_DATABASE_HOST=keycloak-database
+      - KEYCLOAK_DATABASE_USER=${KEYCLOAK_DATABASE_USER?}
+      - KEYCLOAK_DATABASE_NAME=${KEYCLOAK_DATABASE_NAME?}
+      - KEYCLOAK_DATABASE_PASSWORD=${KEYCLOAK_DATABASE_PASSWORD}
+    volumes:
+      - keycloak-database-data:/opt/keycloak/data
+    deploy: &labels
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=traefik
+        - traefik.constraint-label=traefik
+        - traefik.http.routers.${COMPOSE_PROJECT_NAME?}-keycloak.rule=Host(`${KEYCLOAK_HOST?}`)
+        - traefik.http.services.${COMPOSE_PROJECT_NAME?}-keycloak.loadbalancer.server.port=8080
+    <<: *labels
+    networks:
+      traefik: { }
+      default: { }
+
+  keycloak-database:
+    image: postgres:15.3-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: pg_isready --username=$${POSTGRES_USER?} --dbname=$${POSTGRES_DB?}
+      interval: 3s
+      timeout: 3s
+      retries: 8
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DATABASE_NAME:-keycloak}
+      POSTGRES_USER: ${KEYCLOAK_DATABASE_USER:-user}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DATABASE_PASSWORD?}
+    volumes:
+      - keycloak-database-data:/var/lib/postgresql/data
