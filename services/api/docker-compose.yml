@@ -1,0 +1,63 @@
+x-common-account: &common-account
+    env_file:
+        - ./services/api/.env.common
+
+services:
+
+    api-vendor-installer:
+        build:
+            context: ./utils/vendor-installer
+        volumes:
+            - ./services/api:/app
+        env_file:
+            - ./services/api/.env.common
+
+    api-server:
+        build:
+            target: server-develop
+            dockerfile: ./services/laravel.Dockerfile
+        volumes:
+            - ./services/api/:/app
+        networks:
+            traefik: { }
+            default: { }
+        depends_on:
+            traefik:
+                condition: service_started
+        deploy:
+            labels: &labels
+                - traefik.enable=true
+                - traefik.docker.network=traefik
+                - traefik.constraint-label=traefik
+                - traefik.http.routers.${COMPOSE_PROJECT_NAME?}-account-server.rule=Host(`${API_SERVER_HOST?}`) && PathPrefix(`${API_SERVER_PATH_PREFIX?}`)
+                - traefik.http.services.${COMPOSE_PROJECT_NAME?}-account-server.loadbalancer.server.port=8000
+                # Strip path prefix
+                - traefik.http.middlewares.${COMPOSE_PROJECT_NAME?}-account-server-strip-prefix.stripprefix.prefixes=${API_SERVER_PATH_PREFIX?}
+                - traefik.http.routers.${COMPOSE_PROJECT_NAME?}-account-server.middlewares=${COMPOSE_PROJECT_NAME?}-account-server-strip-prefix
+        labels: *labels
+        <<: *common-account
+
+    api-database:
+        image: postgres:15.3-alpine
+        restart: unless-stopped
+        healthcheck:
+            test: pg_isready --username=$${POSTGRES_USER?} --dbname=$${POSTGRES_DB?}
+            interval: 3s
+            timeout: 3s
+            retries: 8
+        environment:
+            POSTGRES_DB: ${API_DATABASE_NAME:-api}
+            POSTGRES_USER: ${API_DATABASE_USER:-user}
+            POSTGRES_PASSWORD: ${API_DATABASE_PASSWORD?}
+
+    api-migrator:
+        build:
+            target: cli-develop
+            dockerfile: ./services/laravel.Dockerfile
+        volumes:
+            - ./services/api/:/app
+        restart: on-failure
+        <<: *common-account
+        command: migrate
+
+

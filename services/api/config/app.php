@@ -124,7 +124,6 @@ return [
     */
 
     'key' => env('APP_KEY'),
-    'jrpc_key' => env('JRPC_KEY'),
     'cipher' => 'AES-256-CBC',
 
     /*
@@ -197,7 +196,6 @@ return [
         App\Providers\EventServiceProvider::class,
 //        App\Providers\EventBusServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-        Packages\ServerHealthcheck\ServerHealthcheckServiceProvider::class,
     ],
 
     /*
