@@ -15,6 +15,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::group(['as' => 'api.'], function () {
-//    Orion::resource('products', FooController::class);
+Route::get('/ping', function () {
+    return response()->json(['message' => 'ok']);
 });

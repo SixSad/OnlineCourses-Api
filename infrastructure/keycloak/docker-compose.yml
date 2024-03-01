@@ -11,11 +11,18 @@ services:
       keycloak-database:
         condition: service_healthy
     environment:
+      - KC_HEALTH_ENABLED=true
       - KEYCLOAK_CREATE_ADMIN_USER=true
       - KEYCLOAK_DATABASE_HOST=keycloak-database
       - KEYCLOAK_DATABASE_USER=${KEYCLOAK_DATABASE_USER?}
       - KEYCLOAK_DATABASE_NAME=${KEYCLOAK_DATABASE_NAME?}
       - KEYCLOAK_DATABASE_PASSWORD=${KEYCLOAK_DATABASE_PASSWORD}
+    healthcheck:
+      test: curl --fail http://localhost:8080/health/ready
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
     volumes:
       - keycloak-database-data:/opt/keycloak/data
     deploy: &labels
